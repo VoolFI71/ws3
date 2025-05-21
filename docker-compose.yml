@@ -1,0 +1,71 @@
+
+
+services:
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: go
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379" 
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - CASSANDRA_HOST=cassandra # Укажите имя сервиса
+      - DATABASE_URL= postgres://postgres:1234@db:5432/go
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+      - redis
+      - cassandra 
+
+
+  nginx:
+    image: nginx:latest
+    build:
+      context: ./frontend
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./frontend/html:/usr/share/nginx/html
+      #- ./certs:/etc/ssl/certs  # Монтируем директорию с сертификатами
+
+    ports:
+      - "80:80"
+      # - "443:443"
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000" 
+      - "9001:9001" 
+    environment:
+      MINIO_ACCESS_KEY: 123123123
+      MINIO_SECRET_KEY: 123123123
+    volumes:
+      - minio_data:/data
+
+    command: server /data --console-address ":9001"  # Запуск MinIO с указанием консоли
+
+  cassandra:
+    image: cassandra:latest
+    container_name: cassandra
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+
+volumes:
+  db_data:
+  minio_data:
+  cassandra-data:

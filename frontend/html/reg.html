@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация</title>
+    <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+            }
+            .register-container {
+                background-color: white;
+                padding: 20px;
+                border-radius: 5px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                width: 320px; /* Установим фиксированную ширину для контейнера */
+            }
+            h2 {
+                margin-bottom: 20px;
+                text-align: center; /* Центрируем заголовок */
+            }
+            input[type="text"], input[type="password"], input[type="email"] {
+                width: 100%;
+                padding: 10px;
+                margin: 10px -10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            input[type="submit"] {
+                background-color: #5cb85c;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                width: 100%; /* Кнопка занимает всю ширину контейнера */
+            }
+            input[type="submit"]:hover {
+                background-color: #4cae4c;
+            }
+    </style>
+    </head>
+    
+<body>
+    <div class="register-container">
+        <h2>Регистрация</h2>
+        <form id="registerForm">
+            <label for="username">Юзернейм:</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Пароль:</label>
+            <input type="password" id="password" name="password" required>
+
+            <label for="email">Почта:</label>
+            <div style="display: flex; align-items: center;">
+                <input type="email" id="email" name="email" required style="flex: 1;">
+                <button type="button" id="sendCodeButton" style="margin-left: 10px;">Отправить код</button>
+            </div>
+
+            <label for="code">Код подтверждения:</label>
+            <input type="text" id="code" name="code" required>
+
+            <input type="submit" value="Зарегистрироваться">
+        </form>
+    </div>
+
+    <script src="reg.js"></script>
+
+</body>
+</html>

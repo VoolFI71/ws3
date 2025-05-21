@@ -33,7 +33,7 @@ var upgrader = websocket.Upgrader{
 type ChatMessage struct {
 	Username  string `json:"username"`
 	Message   string `json:"message"`
-    CreatedAt time.Time `json:"created_at"` // Измените на time.Time
+    CreatedAt int64 `json:"created_at"` // Измените на time.Time
 	Image     string `json:"image"`
 	Audio     string `json:"audio"`
 }
@@ -118,7 +118,7 @@ func SaveMsg(session *gocql.Session) gin.HandlerFunc {
             if session == nil {
                 log.Fatalf("Сессия не инициализирована")
             }
-            query := session.Query("INSERT INTO messages (chat_id, username, message, created_at) VALUES (?, ?, ?, ?)", 1, username, message, time.Now())
+            query := session.Query("INSERT INTO messages (chat_id, username, message, created_at) VALUES (?, ?, ?, ?)", 1, username, message, time.Now().Unix())
             if err := query.Exec(); err != nil {
                 log.Fatalf("Ошибка при добавлении сообщения в базу данных: %v", err)
             }
@@ -230,7 +230,7 @@ func SaveImage(session *gocql.Session) gin.HandlerFunc {
 
         fmt.Println(imageUrl)
         go func() {
-            query := session.Query("INSERT INTO messages (chat_id, username, message, image, created_at, audio_data) VALUES (?, ?, ?, ?, ?, ?)", 1, username, "", imageUrl, time.Now(), nil)
+            query := session.Query("INSERT INTO messages (chat_id, username, message, image, created_at, audio_data) VALUES (?, ?, ?, ?, ?, ?)", 1, username, "", imageUrl, time.Now().Unix(), nil)
             if err := query.Exec(); err != nil {
                 log.Fatalf("Ошибка при добавлении изображения в базу данных %v", err)
             }
@@ -332,7 +332,7 @@ func SaveAudio(session *gocql.Session) gin.HandlerFunc {
 
         //fmt.Println(audio)
 		go func() {
-            query := session.Query("INSERT INTO messages (chat_id, username, message, image, created_at, audio_data) VALUES (?, ?, ?, ?, ?, ?)", 1, username, "", "", time.Now(), audioUrl)
+            query := session.Query("INSERT INTO messages (chat_id, username, message, image, created_at, audio_data) VALUES (?, ?, ?, ?, ?, ?)", 1, username, "", "", time.Now().Unix(), audioUrl)
             err := query.Exec() // Execute the query and check for errors
             if err != nil {
                 fmt.Println(err)

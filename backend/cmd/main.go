@@ -45,7 +45,7 @@ func main() {
 
     router := gin.Default()
     router.Use(cors.New(cors.Config{
-        AllowOrigins:     []string{"http://glebase.ru"}, //адрес фронтенда
+        AllowOrigins:     []string{"http://127.0.0.1"}, //адрес фронтенда
         AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}, // Разрешенные методы
         AllowHeaders:     []string{"Authorization", "Content-Type"}, // Разрешенные заголовки
         ExposeHeaders:    []string{"Content-Length"}, // Заголовки, которые могут быть доступны клиенту

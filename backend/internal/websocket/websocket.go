@@ -172,7 +172,7 @@ func SaveImage(session *gocql.Session) gin.HandlerFunc {
             c.JSON(http.StatusBadRequest, gin.H{"error": "File upload failed"})
             return
         }
-
+ 
         file, err := imageHeader.Open()
         if err != nil {
             fmt.Println("Error opening file:", err)

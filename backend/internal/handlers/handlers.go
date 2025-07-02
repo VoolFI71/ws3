@@ -61,13 +61,13 @@ func Sendmailfunc(user *User) error { //Если эта функция успе�
     m := gomail.NewMessage()
 
     err := godotenv.Load()
-
     m.SetHeader("From", os.Getenv("MAILCODESEND"))
     m.SetHeader("To", user.Email)
     fromEmail := os.Getenv("MAILCODESEND")
     if fromEmail == "" {
         fmt.Println("MAILCODESEND is not set")
     }
+
     m.SetHeader("Subject", "Подтверждение регистрации")
     m.SetBody("text/plain", "Ваш код подтверждения: " + codeStr)
     if err != nil {
@@ -77,7 +77,6 @@ func Sendmailfunc(user *User) error { //Если эта функция успе�
     d := gomail.NewDialer("smtp.mail.ru", 465, os.Getenv("MAILCODESEND"), os.Getenv("SMTPPASSOWRD"))
     if err := d.DialAndSend(m); err != nil {
         fmt.Println(err)
-
         return err
     }
 

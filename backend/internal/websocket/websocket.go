@@ -2,6 +2,7 @@ package websocket
 
 import (
 	//"database/sql"
+	"database/sql"
 	"fmt"
 	"io"
 
@@ -11,15 +12,18 @@ import (
 
 	"encoding/base64"
 
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-    "time"
+
 	//"github.com/go-redis/redis/v8"
 	"context"
-    "github.com/gocql/gocql"
-    "log"
+	"log"
+
+	"github.com/gocql/gocql"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -33,15 +37,21 @@ var upgrader = websocket.Upgrader{
 type ChatMessage struct {
 	Username  string `json:"username"`
 	Message   string `json:"message"`
-    CreatedAt int64 `json:"created_at"` // Измените на time.Time
+    CreatedAt int64 `json:"created_at"` 
 	Image     string `json:"image"`
 	Audio     string `json:"audio"`
+}
+
+type Chat struct {
+    Owner string `json:"owner"`
+    Participants string `json:"participants"`
+    Lifeupto int64 `json:"lifeupto"`
 }
 
 var clients = make(map[*websocket.Conn]bool)
 var broadcast = make(chan ChatMessage)
 
-func SendMsg()  gin.HandlerFunc { // функция для вебсокета
+func SendMsg()  gin.HandlerFunc { 
 	return func (c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
@@ -67,7 +77,6 @@ func SendMsg()  gin.HandlerFunc { // функция для вебсокета
 		}
 	}
 }
-
 
 func SaveMsg(session *gocql.Session) gin.HandlerFunc {
     return func(c *gin.Context) {
@@ -118,7 +127,7 @@ func SaveMsg(session *gocql.Session) gin.HandlerFunc {
             if session == nil {
                 log.Fatalf("Сессия не инициализирована")
             }
-            query := session.Query("INSERT INTO messages (chat_id, username, message, created_at) VALUES (?, ?, ?, ?)", 1, username, message, time.Now().Unix())
+            query := session.Query("INSERT INTO main_chat (chat_id, username, message, created_at) VALUES (?, ?, ?, ?)", 1, username, message, time.Now().Unix())
             if err := query.Exec(); err != nil {
                 log.Fatalf("Ошибка при добавлении сообщения в базу данных: %v", err)
             }
@@ -127,7 +136,6 @@ func SaveMsg(session *gocql.Session) gin.HandlerFunc {
         c.JSON(http.StatusOK, gin.H{"status": "Message saved", "username":  username})
     }
 }
-
 
 func SaveImage(session *gocql.Session) gin.HandlerFunc {
     return func(c *gin.Context) {
@@ -230,7 +238,7 @@ func SaveImage(session *gocql.Session) gin.HandlerFunc {
 
         fmt.Println(imageUrl)
         go func() {
-            query := session.Query("INSERT INTO messages (chat_id, username, message, image, created_at, audio_data) VALUES (?, ?, ?, ?, ?, ?)", 1, username, "", imageUrl, time.Now().Unix(), nil)
+            query := session.Query("INSERT INTO main_chat (chat_id, username, message, image, created_at, audio_data) VALUES (?, ?, ?, ?, ?, ?)", 1, username, "", imageUrl, time.Now().Unix(), nil)
             if err := query.Exec(); err != nil {
                 log.Fatalf("Ошибка при добавлении изображения в базу данных %v", err)
             }
@@ -332,7 +340,7 @@ func SaveAudio(session *gocql.Session) gin.HandlerFunc {
 
         //fmt.Println(audio)
 		go func() {
-            query := session.Query("INSERT INTO messages (chat_id, username, message, image, created_at, audio_data) VALUES (?, ?, ?, ?, ?, ?)", 1, username, "", "", time.Now().Unix(), audioUrl)
+            query := session.Query("INSERT INTO main_chat (chat_id, username, message, image, created_at, audio_data) VALUES (?, ?, ?, ?, ?, ?)", 1, username, "", "", time.Now().Unix(), audioUrl)
             err := query.Exec() // Execute the query and check for errors
             if err != nil {
                 fmt.Println(err)
@@ -343,7 +351,159 @@ func SaveAudio(session *gocql.Session) gin.HandlerFunc {
     }
 }
 
+func CreateChat(sessionCassandra *gocql.Session, sessionPG *sql.DB) gin.HandlerFunc {
+    return func(c *gin.Context) {
+        var jwtSecret = []byte("123")
 
+        tokenString := c.GetHeader("Authorization")
+        if len(tokenString) > 7 && strings.ToLower(tokenString[:7]) == "bearer " {
+            tokenString = tokenString[7:]
+        }
+
+        if tokenString == "" {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token is required"})
+            return
+        }
+
+        token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+                return nil, http.ErrNotSupported
+            }
+            return jwtSecret, nil
+        })
+
+        if err != nil || !token.Valid {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+            return
+        }
+
+        claims, ok := token.Claims.(jwt.MapClaims)
+        if !ok || !token.Valid {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+            return
+        }
+
+        userIDFloat, ok := claims["user_id"].(float64)
+        fmt.Println(userIDFloat)
+        if !ok {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "user_id не найден в данных токена"})
+            return
+        }
+
+        user_id:= int(userIDFloat)
+        go func() {
+            var chatID int64
+            err := sessionPG.QueryRow("INSERT INTO chats (owner_id, name, lifeupto) VALUES ($1, $2, $3) RETURNING chat_id", user_id, "chat_name22", time.Now().Unix()+3600).Scan(&chatID)
+            if err != nil {
+                fmt.Println("Error inserting chat:", err)
+                return
+            }
+
+            // Проверка, что chatID не равен 0
+            if chatID == 0 {
+                fmt.Println("Error: received chat_id is 0")
+                return
+            }
+
+            // Вставка нового члена чата в таблицу chat_members
+            _, err = sessionPG.Exec("INSERT INTO chat_members (chat_id, user_id) VALUES ($1, $2)", chatID, user_id)
+            if err != nil {
+                fmt.Println("Error inserting chat member:", err)
+                return
+            }
+        }()
+    }
+}
+
+func GetUserChats(sessionPG *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var jwtSecret = []byte("123")
+
+        tokenString := c.GetHeader("Authorization")
+        if len(tokenString) > 7 && strings.ToLower(tokenString[:7]) == "bearer " {
+            tokenString = tokenString[7:]
+        }
+
+        if tokenString == "" {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token is required"})
+            return
+        }
+
+        token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+                return nil, http.ErrNotSupported
+            }
+            return jwtSecret, nil
+        })
+
+        if err != nil || !token.Valid {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+            return
+        }
+
+        claims, ok := token.Claims.(jwt.MapClaims)
+        if !ok || !token.Valid {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+            return
+        }
+
+        fmt.Println(claims)
+        userIDFloat, ok := claims["user_id"].(float64) // Извлекаем как float64
+        fmt.Println(userIDFloat)
+        if !ok {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "user_id не найден в данных токена"})
+            return
+        }
+        user_id:= int(userIDFloat)
+        fmt.Println("user_id:", user_id)
+
+        rows, err := sessionPG.Query(`
+            SELECT c.chat_id, c.name 
+            FROM chats c
+            JOIN chat_members cm ON c.chat_id = cm.chat_id
+            WHERE cm.user_id = $1`, user_id)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось получить чаты"})
+            return
+        }
+        defer rows.Close()
+
+        var chats []struct {
+            ChatID int    `json:"chat_id"`
+            Name   string `json:"name"`
+            // OwnerId int  `json:"owner_id"`
+
+        }
+        fmt.Println(err, 111111)
+
+        for rows.Next() {
+            var chat struct {
+                ChatID int    `json:"chat_id"`
+                Name   string `json:"name"`
+                // OwnerId int  `json:"owner_id"`
+            }
+            fmt.Println(err, 22222)
+
+            if err := rows.Scan(&chat.ChatID, &chat.Name); err != nil {
+                fmt.Println(err, 333333)
+
+                c.JSON(http.StatusInternalServerError, gin.H{"error": "Не удалось обработать чат"})
+                return
+            }
+            chats = append(chats, chat)
+        }
+
+        if err := rows.Err(); err != nil {
+            fmt.Println(err, 44444)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Произошла ошибка при получении чатов"})
+            return
+        }
+
+        // Возврат списка чатов в формате JSON
+        c.JSON(http.StatusOK, chats)
+    }
+}
+		
 func GetMessagesHandler(session *gocql.Session) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		messages, err := GetLastMessages(session)
@@ -358,7 +518,7 @@ func GetMessagesHandler(session *gocql.Session) gin.HandlerFunc {
 }
 
 func GetLastMessages(session *gocql.Session) ([]ChatMessage, error) {
-	iter := session.Query("SELECT username, message, created_at, image, audio_data FROM messages WHERE chat_id=1 ORDER BY created_at DESC LIMIT 75").Iter()
+	iter := session.Query("SELECT username, message, created_at, image, audio_data FROM main_chat WHERE chat_id=1 ORDER BY created_at DESC LIMIT 75").Iter()
     defer iter.Close()
 
 	var messages []ChatMessage
@@ -428,10 +588,6 @@ func GetLastMessages(session *gocql.Session) ([]ChatMessage, error) {
 
     return messages, nil
 }
-
-
-
-
 
 func HandleMessages() {
 	for {

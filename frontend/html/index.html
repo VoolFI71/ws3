@@ -26,7 +26,7 @@
         <style> 
             .chat-container {
                 margin-top: 30px;
-                margin-left: 20px;
+                margin-left: 800px;
                 width: 720px;
                 border: 1px solid #ccc;
                 border-radius: 8px;
@@ -176,6 +176,32 @@
                 transform: scale(0.95);
             }
         </style>
+
+        <style>
+            #chatbutton {
+                background-color: #008CBA; 
+                color: white; 
+                border: none;
+                padding: 15px 32px; 
+                text-align: center; 
+                text-decoration: none; 
+                display: flex;
+                flex-direction: column; /* Располагаем элементы вертикально */
+                font-size: 16px; 
+                margin: 4px 2px;
+                cursor: pointer; 
+                border-radius: 8px; 
+                transition: background-color 0.3s, transform 0.2s; 
+            }
+
+            #chatbutton:hover {
+                background-color: #005f73; 
+            }
+
+            #chatbutton:active {
+                transform: scale(0.95);
+            }
+        </style> 
     </head>
 
     <body>
@@ -191,7 +217,14 @@
             <button id="logoutButton" onclick="logout()">Выход</button>
         </div>
 
+
     </header>
+
+    <h1>Список Чатов</h1>
+    <div id="chatList">
+    <script src="index.js"></script>
+
+    </div>
 
         <div class="chat-container">
             <div class="chat-header">Общий чат</div>
@@ -206,5 +239,28 @@
         </div>
 
         <script src="index.js"></script>
+
+
+    <div id="chatList">
+        <div class="chatItem" onclick="openChat('Чат 1')">Чат 1</div>
+        <div class="chatItem" onclick="openChat('Чат 2')">Чат 2</div>
+        <div class="chatItem" onclick="openChat('Чат 3')">Чат 3</div>
+        <div class="chatItem" onclick="openChat('Чат 4')">Чат 4</div>
+    </div>
+
+    <div id="chatWindow">
+        <h2 id="chatTitle">Выберите чат</h2>
+        <div id="chatContent">Содержимое чата будет отображаться здесь.</div>
+    </div>
+
+    <script>
+        function openChat(chatName) {
+            document.getElementById('chatTitle').innerText = chatName;
+            document.getElementById('chatContent').innerText = 'Содержимое ' + chatName;
+            const chatItems = document.querySelectorAll('.chatItem');
+            chatItems.forEach(item => item.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
 </body>
 </html>

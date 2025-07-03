@@ -1,3 +1,7 @@
+
+
+const token = localStorage.getItem('token');
+
 function checkEnter(event) {
     if (event.key === 'Enter') {
         event.preventDefault(); 
@@ -9,51 +13,49 @@ function checkEnter(event) {
 function logout() {
     localStorage.removeItem('token');
     window.location.reload();
-    }
+}
 
-    const token = localStorage.getItem('token');
+if (token) {
+    document.getElementById('auth-buttons').style.display = 'none';
+    document.getElementById('user-info').style.display = 'block';
+    getUserInfo();
+    getMessages();
+} else {
+    document.getElementById('auth-buttons').style.display = 'block';
+    document.getElementById('user-info').style.display = 'none';
+}
 
-    if (token) {
-        document.getElementById('auth-buttons').style.display = 'none';
-        document.getElementById('user-info').style.display = 'block';
-        getUserInfo();
-        getMessages();
-    } else {
-        document.getElementById('auth-buttons').style.display = 'block';
-        document.getElementById('user-info').style.display = 'none';
-    }
+function redirectToRegister() {
+    window.location.href = 'http://127.0.0.1/reg'; 
+}
 
-    function redirectToRegister() {
-        window.location.href = 'http://127.0.0.1/reg'; 
-    }
+function redirectToLogin() {
+    window.location.href = 'http://127.0.0.1/login'; 
+}
 
-    function redirectToLogin() {
-        window.location.href = 'http://127.0.0.1/login'; 
-    }
+function getUserInfo() {
+    fetch('http://127.0.0.1:8080/userinfo', {
+        method: 'GET',
+        credentials: 'include',
 
-    function getUserInfo() {
-        fetch('http://127.0.0.1:8080/userinfo', {
-            method: 'GET',
-            credentials: 'include',
-
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            document.getElementById('username-display').textContent = data.username;
-        })
-        .catch(error => {
-            console.error('Error fetching user info:', error);
-        });
-    }
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById('username-display').textContent = data.username;
+    })
+    .catch(error => {
+        console.error('Error fetching user info:', error);
+    });
+}
 
 function getMessages() {
     fetch('http://127.0.0.1:8080/getmsg', {
@@ -312,3 +314,48 @@ async function startRecording() {
 
     mediaRecorder.start();
 }
+
+
+document.addEventListener("DOMContentLoaded", function() {
+    const chatListElement = document.getElementById("chatList");
+
+    fetch("http://127.0.0.1:8080/chats", { // Замените на ваш URL API
+        method: "GET",
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Ошибка при получении чатов: " + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Обработка полученных данных
+        if (data.length === 0) {
+            chatListElement.innerHTML = "<p>Нет доступных чатов.</p>";
+            return;
+        }
+
+        data.forEach(chat => {
+            const chatButton = document.createElement("button");
+            chatButton.id = "chatbutton"; // Устанавливаем id для кнопки
+            chatButton.innerText = `Чат ID: ${chat.chat_id}, Название: ${chat.name}`;
+            
+            // Добавляем обработчик события для кнопки
+            chatButton.addEventListener("click", function() {
+                // Здесь можно добавить логику для обработки нажатия на кнопку
+                console.log(`Кнопка чата ${chat.chat_id} нажата`);
+                // Например, можно открыть чат или выполнить другой запрос
+            });
+
+            chatListElement.appendChild(chatButton);
+        });
+    })
+    .catch(error => {
+        console.error("Ошибка:", error);
+        chatListElement.innerHTML = "<p>Произошла ошибка при загрузке чатов.</p>";
+    });
+});

@@ -51,7 +51,6 @@ func createRedisClient() *redis.Client {
     return redisClient
 }
 
-
 func Sendmailfunc(user *User) error { //Если эта функция успешно возвратила nil. То код был отправлен на почту и код появился в редисе
 
     r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -105,7 +104,7 @@ func Sendmail(db *sql.DB) gin.HandlerFunc {
 
         var exists1 bool
         var exists2 bool
-		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM g WHERE username = $1)", user.Username).Scan(&exists1)
+		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)", user.Username).Scan(&exists1)
 
         if err != nil {
 			log.Printf("Database error: %v", err)
@@ -113,7 +112,7 @@ func Sendmail(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-        err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM g WHERE email = $1)", user.Email).Scan(&exists2)
+        err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", user.Email).Scan(&exists2)
 
         if err != nil {
 			log.Printf("Database error: %v", err)
@@ -174,7 +173,7 @@ func Reg(db *sql.DB) gin.HandlerFunc {
             return
         } 
         if value == user.Code {
-            _, err = db.Exec("INSERT INTO g (username, password, balance, email) VALUES ($1, $2, $3, $4)", user.Username, user.Password, 0.00, user.Email)
+            _, err = db.Exec("INSERT INTO users (username, password, email) VALUES ($1, $2, $3)", user.Username, user.Password, user.Email)
             if err != nil {
                 log.Println("Ошибка при добавлении пользователя в базу данных:", err)
                 c.JSON(500, gin.H{"error": "Ошибка при добавлении пользователя"})
@@ -196,7 +195,7 @@ func Login(db *sql.DB) gin.HandlerFunc {
         }
 
         var storedPassword string
-        err := db.QueryRow("SELECT password FROM g WHERE username = $1", user.Username).Scan(&storedPassword)
+        err := db.QueryRow("SELECT password FROM users WHERE username = $1", user.Username).Scan(&storedPassword)
 
         if err != nil {
             if err == sql.ErrNoRows {
@@ -213,8 +212,17 @@ func Login(db *sql.DB) gin.HandlerFunc {
             return
         }
 
+        var userID int
+        err = db.QueryRow("SELECT user_id, password FROM users WHERE username = $1", user.Username).Scan(&userID, &storedPassword)
+
+        if err!= nil{
+            fmt.Print(err)
+            return
+        }
+
         token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
             "username": user.Username,
+            "user_id": userID,
             "exp":      time.Now().Add(time.Hour * 72).Unix(), 
         })
 
@@ -225,20 +233,11 @@ func Login(db *sql.DB) gin.HandlerFunc {
             return
         }
 
-        // cookie := http.Cookie{
-        //     Name:     "token",
-        //     Value:    tokenString,
-        //     Path:     "/",
-        //     MaxAge: 3000,
-        //     HttpOnly: true,
-        //     Secure:   false, // Установите true, если используете HTTPS
-        //     SameSite: http.SameSiteStrictMode, // Разрешить доступ с другого источника
-        // }
-        //http.SetCookie(c.Writer, &cookie)        
         c.SetCookie("token", tokenString, 3000, "/", "", false, true)
         c.JSON(200, gin.H{
             "message": "Login successful",
             "username": user.Username,
+            "user_id": userID,
             "token": tokenString,
         })
     }

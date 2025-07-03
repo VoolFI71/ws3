@@ -21,10 +21,49 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var jwtSecret = []byte("123")
+
+func Getinfo(c *gin.Context) string {
+        tokenString := c.GetHeader("Authorization")
+        
+        // Удаляем "Bearer " из токена, если он присутствует
+        if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
+            tokenString = tokenString[7:]
+        }
+
+        if tokenString == "" {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token is required"})
+            return ""
+        }
+
+        token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+                return nil, http.ErrNotSupported
+            }
+            return jwtSecret, nil
+        })
+
+        if err != nil || !token.Valid {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+            return ""
+        }
+
+        claims, ok := token.Claims.(jwt.MapClaims)
+        if !ok || !token.Valid {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+            return ""
+        }
+
+        username, ok := claims["username"].(string)
+        if !ok {
+            c.JSON(http.StatusUnauthorized, gin.H{"error": "Username not found in token"})
+            return ""
+        }
+        return username
+    }
 
 func main() {
     err := godotenv.Load()
-    var jwtSecret = []byte("123")
 
     if err != nil {
         log.Fatalf("Ошибка загрузки .env файла: %v", err)
@@ -69,11 +108,8 @@ func main() {
         c.Next()
     })
 
-    // print hello world
-
     go websocket.HandleMessages()
 
-    router.GET("/gt", middleware.AuthMiddleware(), handlers.GT)
     router.GET(`/`, handlers.MainPage)
     router.GET("/ws", websocket.SendMsg())
 
@@ -81,46 +117,17 @@ func main() {
     router.POST("/savemsg",  middleware.AuthMiddleware(), websocket.SaveMsg(cassandra.Session))
     router.POST("/saveimage",  middleware.AuthMiddleware(), websocket.SaveImage(cassandra.Session))
     router.POST("/saveaudio",  middleware.AuthMiddleware(), websocket.SaveAudio(cassandra.Session))
+    router.POST("/create/chat", middleware.AuthMiddleware(), websocket.CreateChat(cassandra.Session, database))
+    router.GET("/chats", middleware.AuthMiddleware(), websocket.GetUserChats(database))
 
 
     router.POST("/sendmail", handlers.Sendmail(database))
     router.POST("/login", handlers.Login(database))
     router.POST("/reg", handlers.Reg(database))
     router.GET("/userinfo", func(c *gin.Context) {
-        tokenString := c.GetHeader("Authorization")
-        
-        // Удаляем "Bearer " из токена, если он присутствует
-        if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
-            tokenString = tokenString[7:]
-        }
-
-        if tokenString == "" {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token is required"})
-            return
-        }
-
-        token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-            if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-                return nil, http.ErrNotSupported
-            }
-            return jwtSecret, nil
-        })
-
-        if err != nil || !token.Valid {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-            return
-        }
-
-        claims, ok := token.Claims.(jwt.MapClaims)
-        if !ok || !token.Valid {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
-            return
-        }
-
-        username, ok := claims["username"].(string)
-        if !ok {
-            c.JSON(http.StatusUnauthorized, gin.H{"error": "Username not found in token"})
-            return
+        username := Getinfo(c)
+        if username == "" {
+            return 
         }
 
         c.JSON(http.StatusOK, gin.H{

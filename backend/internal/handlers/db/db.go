@@ -22,23 +22,28 @@ func Connect() error {
 
     _, err = database.Exec(`
         
-        CREATE TABLE IF NOT EXISTS g (
-            username VARCHAR(50) UNIQUE,
-            password VARCHAR(100),
-            balance DECIMAL(10, 2),
-            email VARCHAR(50) UNIQUE
-        );
-        
-        CREATE TABLE IF NOT EXISTS chat (
-            chat_id INTEGER,  
-            username VARCHAR(50),
-            message VARCHAR(100),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            image VARCHAR(100),
-            audio_data BYTEA
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_created_at_chat_id ON chat (created_at, chat_id); 
+            CREATE TABLE IF NOT EXISTS users (
+                user_id SERIAL PRIMARY KEY,          -- Уникальный идентификатор для каждого пользователя
+                username VARCHAR(50) UNIQUE,
+                password VARCHAR(100) NOT NULL,
+                email VARCHAR(50) UNIQUE NOT NULL
+            );
+            
+            CREATE TABLE IF NOT EXISTS chats (
+                chat_id BIGSERIAL PRIMARY KEY,  -- Автоинкремент для уникального идентификатора чата
+                name TEXT NOT NULL, -- НАЗВАНИЕ ЧАТА
+                owner_id INT NOT NULL,          -- Владелец чата
+                lifeupto INT,
+                FOREIGN KEY (owner_id) REFERENCES users(user_id) ON DELETE CASCADE -- Обеспечивает целостность ссылок
+            );
+            
+            CREATE TABLE IF NOT EXISTS chat_members (
+                chat_id INT NOT NULL,                 -- Внешний ключ на таблицу чатов
+                user_id INT NOT NULL,                 -- Внешний ключ на таблицу пользователей
+                PRIMARY KEY (chat_id, user_id),      -- Композитный первичный ключ
+                FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE, -- Обеспечивает целостность ссылок
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE  -- Обеспечивает целостность ссылок
+            );
        `)
 
     if err != nil {

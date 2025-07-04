@@ -1,4 +1,4 @@
-
+currentchatID = 1
 
 const token = localStorage.getItem('token');
 
@@ -57,9 +57,13 @@ function getUserInfo() {
     });
 }
 
-function getMessages() {
+function getMessages(chatId) {
     fetch('http://127.0.0.1:8080/getmsg', {
-        method: 'GET', 
+        method: 'POST', 
+        headers: {
+            'Content-Type': 'application/json' // Указываем тип содержимого
+        },
+        body: JSON.stringify({ chat_id: chatId }) // Отправляем ID чата в теле запро
     })
     .then(response => {
         if (!response.ok) {
@@ -106,7 +110,7 @@ function getMessages() {
 }
 
 window.onload = function() {
-    getMessages(); 
+    getMessages(1); 
 };
 
 
@@ -146,7 +150,7 @@ function createMessage() {
     const message = messageInput.value.trim();
     
     if (message) {
-        const messageData = { message: message }; // Создаем объект с полем Message
+        const messageData = { message: message, chat_id: currentchatID}; // Создаем объект с полем Message
 
         fetch('http://127.0.0.1:8080/savemsg', {
             method: 'POST',
@@ -315,11 +319,11 @@ async function startRecording() {
     mediaRecorder.start();
 }
 
-
 document.addEventListener("DOMContentLoaded", function() {
     const chatListElement = document.getElementById("chatList");
+    const messagesElement = document.getElementById("messages"); 
 
-    fetch("http://127.0.0.1:8080/chats", { // Замените на ваш URL API
+    fetch("http://127.0.0.1:8080/chats", { 
         method: "GET",
         headers: {
             "Authorization": `Bearer ${token}`,
@@ -333,7 +337,6 @@ document.addEventListener("DOMContentLoaded", function() {
         return response.json();
     })
     .then(data => {
-        // Обработка полученных данных
         if (data.length === 0) {
             chatListElement.innerHTML = "<p>Нет доступных чатов.</p>";
             return;
@@ -341,14 +344,16 @@ document.addEventListener("DOMContentLoaded", function() {
 
         data.forEach(chat => {
             const chatButton = document.createElement("button");
-            chatButton.id = "chatbutton"; // Устанавливаем id для кнопки
+            chatButton.id = "chatbutton";
             chatButton.innerText = `Чат ID: ${chat.chat_id}, Название: ${chat.name}`;
             
-            // Добавляем обработчик события для кнопки
             chatButton.addEventListener("click", function() {
-                // Здесь можно добавить логику для обработки нажатия на кнопку
+                messagesElement.innerHTML = ""; 
                 console.log(`Кнопка чата ${chat.chat_id} нажата`);
-                // Например, можно открыть чат или выполнить другой запрос
+                currentchatID = chat.chat_id
+
+                getMessages(chat.chat_id)
+                
             });
 
             chatListElement.appendChild(chatButton);
@@ -357,5 +362,40 @@ document.addEventListener("DOMContentLoaded", function() {
     .catch(error => {
         console.error("Ошибка:", error);
         chatListElement.innerHTML = "<p>Произошла ошибка при загрузке чатов.</p>";
+    });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('createChatButton').addEventListener('click', function() {
+
+        const chatName = document.getElementById('chatName').value; // Получаем название чата из поля ввода
+        if (!chatName) {
+            document.getElementById('responseMessage').textContent = 'Пожалуйста, введите название чата.';
+            return;
+        }
+        fetch('http://127.0.0.1:8080/create/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}` // Добавляем токен в заголовок
+            },
+            body: JSON.stringify({
+                namechat: chatName 
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Ошибка при создании чата');
+            }
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('responseMessage').textContent = 'Чат успешно создан!';
+            console.log(data); // Выводим данные в консоль для отладки
+        })
+        .catch(error => {
+            document.getElementById('responseMessage').textContent = 'Ошибка: ' + error.message;
+            console.error('Ошибка:', error);
+        });
     });
 });

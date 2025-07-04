@@ -113,7 +113,7 @@ func main() {
     router.GET(`/`, handlers.MainPage)
     router.GET("/ws", websocket.SendMsg())
 
-    router.GET("/getmsg", websocket.GetMessagesHandler(cassandra.Session))
+    router.POST("/getmsg", websocket.GetMessagesHandler(cassandra.Session))
     router.POST("/savemsg",  middleware.AuthMiddleware(), websocket.SaveMsg(cassandra.Session))
     router.POST("/saveimage",  middleware.AuthMiddleware(), websocket.SaveImage(cassandra.Session))
     router.POST("/saveaudio",  middleware.AuthMiddleware(), websocket.SaveAudio(cassandra.Session))

@@ -5,30 +5,39 @@ CREATE KEYSPACE chat WITH replication = {'class': 'SimpleStrategy', 'replication
 
 USE chat;
 
-CREATE TABLE IF NOT EXISTS messages (
-    chat_id int,
-    username text,
-    message text,
-    created_at int,
-    image text,
-    audio_data blob,
-    PRIMARY KEY (chat_id, created_at)
-);
 PG
 CREATE TABLE IF NOT EXISTS chats (
-    chat_id SERIAL PRIMARY KEY,  -- Автоинкремент для уникального идентификатора чата
+    chat_id BIGSERIAL PRIMARY KEY,  -- Автоинкремент для уникального идентификатора чата
+    name TEXT NOT NULL, -- НАЗВАНИЕ ЧАТА
     owner TEXT NOT NULL,          -- Владелец чата
-    participants TEXT,            -- Участники чата (можно использовать массив или отдельную таблицу для нормализации)
     lifeupto INT                  -- Срок жизни чата
+    FOREIGN KEY (owner_id) REFERENCES users(user_id) ON DELETE CASCADE -- Обеспечивает целостность ссылок
+
 );
+
+
+CREATE TABLE IF NOT EXISTS chat_members (
+    chat_id INT NOT NULL,                 -- Внешний ключ на таблицу чатов
+    user_id INT NOT NULL,                 -- Внешний ключ на таблицу пользователей
+    PRIMARY KEY (chat_id, user_id),      -- Композитный первичный ключ
+    FOREIGN KEY (chat_id) REFERENCES chats(chat_id) ON DELETE CASCADE, -- Обеспечивает целостность ссылок
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE  -- Обеспечивает целостность ссылок
+);
+
 CASSANDRA
 
-CREATE TABLE IF NOT EXISTS chats_messages (
-    message_id int PRIMARY KEY AUTO_INCREMENT,  
-    chat_id int,
-    sender text,
-    message text,
+CREATE TABLE IF NOT EXISTS messages (
+    chat_id INT,    
+    message_id UUID,                     -- Уникальный идентификатор сообщения (UUID)
+    username TEXT,                       -- Имя пользователя
+    sender_id INT,                      -- Идентификатор отправителя (UUID)
+    message TEXT,                        -- Текст сообщения
+    created_at INT,                 -- Время отправки сообщения
+    image TEXT,
+    audio_data BLOB,
+    PRIMARY KEY (chat_id, message_id, created_at)   -- Добавлено created_at как кластерный столбец
 );
 
-SMTPPASSOWRD=tPgacYUcy4RR37bSGunV
+
+SMTPPASSOWRD=
 MAILCODESEND=gleb.gleb.tula@mail.ru

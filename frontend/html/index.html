@@ -24,9 +24,16 @@
             
         </style>
         <style> 
+            .maindiv {
+                display: flex; /* Включаем Flexbox */
+                flex-direction: row; /* Устанавливаем направление по горизонтали */
+                align-items: center; /* Выравниваем элементы по центру по вертикали */
+                gap: 10px; /* Добавляем промежуток между элементами (по желанию) */
+            }
+            
             .chat-container {
                 margin-top: 30px;
-                margin-left: 800px;
+                margin-left: 240px;
                 width: 720px;
                 border: 1px solid #ccc;
                 border-radius: 8px;
@@ -186,7 +193,7 @@
                 text-align: center; 
                 text-decoration: none; 
                 display: flex;
-                flex-direction: column; /* Располагаем элементы вертикально */
+                flex-direction: column; 
                 font-size: 16px; 
                 margin: 4px 2px;
                 cursor: pointer; 
@@ -219,13 +226,12 @@
 
 
     </header>
-
-    <h1>Список Чатов</h1>
-    <div id="chatList">
-    <script src="index.js"></script>
-
-    </div>
-
+    <div class="maindiv">
+        <div>
+            <h1>Список Чатов</h1>
+            <div id="chatList">
+            </div>
+        </div>
         <div class="chat-container">
             <div class="chat-header">Общий чат</div>
             <div class="chat-messages" id="messages"></div>
@@ -234,24 +240,11 @@
                 <input type="file" id="image" accept="image/*" />
                 <button id="recordButton" onclick="toggleRecording()">Записать аудио</button>
                 <button onclick="checktype()">Отправить</button>
-
             </div>
         </div>
 
-        <script src="index.js"></script>
-
-
-    <div id="chatList">
-        <div class="chatItem" onclick="openChat('Чат 1')">Чат 1</div>
-        <div class="chatItem" onclick="openChat('Чат 2')">Чат 2</div>
-        <div class="chatItem" onclick="openChat('Чат 3')">Чат 3</div>
-        <div class="chatItem" onclick="openChat('Чат 4')">Чат 4</div>
     </div>
 
-    <div id="chatWindow">
-        <h2 id="chatTitle">Выберите чат</h2>
-        <div id="chatContent">Содержимое чата будет отображаться здесь.</div>
-    </div>
 
     <script>
         function openChat(chatName) {
@@ -262,5 +255,14 @@
             event.target.classList.add('active');
         }
     </script>
+
+     <div class="maindiv">
+        <input type="text" id="chatName" placeholder="Введите название чата" />
+        <button id="createChatButton">Создать Чат</button>
+        <div id="responseMessage"></div>
+    </div>
+
+    <script src="index.js"></script>
+
 </body>
 </html>
